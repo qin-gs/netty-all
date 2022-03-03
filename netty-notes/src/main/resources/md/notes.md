@@ -69,7 +69,7 @@ netty 的**核心组件**
 
 
 
-- Eventloop: 控制流，多线程处理，并发
+- EventLoop: 控制流，多线程处理，并发
 
   定义 Netty 的核心抽象，处理连接的生命周期中发生的事件
 
@@ -83,7 +83,7 @@ netty 的**核心组件**
 
 
 
-- ChanndlFuture: 异步通知
+- ChannelFuture: 异步通知
 
   对于异步操作，在特定的时间段确定其结果
 
@@ -95,6 +95,157 @@ netty 的**核心组件**
 
   处理出站 和 入站 数据的应用程序逻辑的容器
 
-  
+  ChannelInboundHandler: 接收入站事件和数据
 
 - ChannelPipeline
+
+  提供了 ChannelHandler 链的容器，并定义了用于该链上传播入站 和 出站 时间流的 api。Channel 被创建时，会自动分派到专属的 Pipeline
+
+  ChannelPipeline 是 ChannelHandler 的编排顺序，使事件流经 ChannelPipeline 是 ChannelHandler 的工作
+
+  将 ChannelHandler 安装到 ChannelPipeline 的过程：
+
+  - 一个 ChannelInitializer 的实现被注册到 ServerBootstrap
+  - 当 ChannelInitializer#initChannel 被调用时，ChannelInitializer 将在 ChannelPipeline 中安装一组自定义的 ChannelHandler
+  - ChannelInitializer 将自己从 ChannelPipeline 中移除
+
+ChannelHandler 被添加到 ChannelPipeline 时，会被分配一个 ChannelHandlerContext
+
+ChannelHandlerAdapter 作为 ChannelHandler 的默认实现，可以只重写需要的方法 或 事件
+
+
+
+- 编码器 / 解码器
+
+  发送 或 接收消息时，可能需要进行数据转换
+
+  从入站 Channel 中读取消息时，ChannelInBoundHandler#channelRead 方法会被调用
+
+  扩展 SimpleChannelInBoundHandler<T>  完成解码
+
+
+
+**引导**
+
+- Bootstrap: 用于客户端，连接到远程主机端口，需要一个 EventLoopGroup
+- ServerBootstrap: 用于服务端，绑定到一个本地端口，需要两个 EventLoopGroup
+  - 第一个只包含一个 ServerChannel，代表服务器自身的已绑定到某个本地端口的正在监听的台阶在
+  - 第二个将包含所有已创建的用来处理传入客户端连接(每个服务器已接受的连接都有一个)的 Channel
+
+
+
+#### 4. 传输
+
+每个 Channel 都被被分配一个 ChannelPipeline 和 ChannelConfig(包含该 Channel 的所有配置)
+
+ChannelPipeline 持有所有 ChannelHandler(应用与入站 和 出站数据 和 事件)
+
+- 转换数据格式
+- 提供异常通知
+- 提供 Channel 变成获得 或 非活动的通知
+- 提供 Channel 注册 或 注销 到 EventLoop 的通知
+- 提供用户自定义事件的通知
+
+内置的传输
+
+- NIO: 基于选择器(java.nio.channels)
+
+  所有 IO 操作的全异步实现，可以请求在 Channel 状态发生变化时得到通知
+
+  - OP_ACCEPT:          新 Channel 被接受并就绪
+  - OP_CONNECT:      Channel 连接已完成
+  - OP_READ:              Channel 有已就绪的可供读取的数据
+  - OP_WRITE:             Channel 可用于写数据
+
+- Epoll: netty 特有的实现，更加适配 netty 现有的线程模型
+
+  用于 linux 的本地非阻塞传输
+
+- OIO: 使用阻塞流(java.net)
+
+- Local: 可在 JVM 内部通过管道进行通信的本地传输
+
+  用于在同一个 JVM 中运行的客户端 和 服务器程序之间的异步通信
+
+- Embedded: 用于测试 ChannelHandler
+
+  可以将一组 ChannelHandler 作为帮助器嵌入到其他的 ChannelHandler 内部(可以扩展其功能而不用修改内部代码)
+
+  
+
+#### 5. ByteBuf 数据容器
+
+java.nio.ByteBuffer -> io.netty.buffer.ByteBuf
+
+1. 工作原理
+
+   维护两个索引(读取，写入)
+
+2. 使用模式
+
+   - 堆缓冲区
+
+     支撑数组(backing array)
+
+   - 直接缓冲区
+
+   - 复合缓冲区
+
+     `io.netty.buffer.CompositeByteBuf` 提供一个将多个缓冲区表示为单个合并缓冲区的虚拟表示
+
+
+
+字节级操作
+
+- 随机访问索引
+
+  ```java
+  buf.getByte(i)
+  ```
+
+- 顺序访问索引
+
+  通过 读索引，写索引 将数据划分为三个区域
+
+- 可丢弃字节
+
+  discardReadBytes 方法丢弃已经读过的数据，会导致内存复制(需要将可读字节移动到缓冲区的开始位置)
+
+- 可读字节
+
+- 可写字节
+
+- 索引管理
+
+  markReaderIndex, markWriteIndex, resetWriteIndex, resetReadIndex, clear
+
+- 查找操作
+
+  确定索引 indexOf
+
+  io.netty.util.ByteProcessor
+
+- 派生缓冲区
+
+  展示内容视图
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
