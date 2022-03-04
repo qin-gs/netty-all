@@ -1,15 +1,24 @@
 package com.example.chapter05;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DummyChannelHandlerContext;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.ByteProcessor;
 
+import javax.accessibility.AccessibleValue;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ByteBufExamples {
     public static final ThreadLocalRandom RANDOM = ThreadLocalRandom.current();
     public static final ByteBuf BYTE_BUF_FROM_SOMEWHERE = Unpooled.buffer(1024);
+    public static final Channel CHANNEL_FROM_SOMEWHERE = new NioSocketChannel();
+    public static final ChannelHandlerContext CHANNEL_HANDLER_CONTEXT_FROM_SOMEWHERE = DummyChannelHandlerContext.DUMMY_INSTANCE;
+    private static Charset UTF_8 = StandardCharsets.UTF_8;
 
     /**
      * 堆缓冲区
@@ -101,6 +110,96 @@ public class ByteBufExamples {
         }
     }
 
+    /**
+     * 查找操作
+     */
+    public static void byteProcessor() {
+        ByteBuf buf = BYTE_BUF_FROM_SOMEWHERE;
+        int index = buf.forEachByte(ByteProcessor.FIND_CR);
+        int i = buf.forEachByte(ByteBufProcessor.FIND_CR);
+    }
+
+    /**
+     * 切片
+     */
+    public static void byteBufSlice() {
+        ByteBuf buf = Unpooled.copiedBuffer("hello world", UTF_8);
+        ByteBuf slice = buf.slice(0, 5);
+        System.out.println(slice.toString(UTF_8));
+
+        // 修改原内容，副本也会变
+        buf.setByte(0, 'a');
+
+        System.out.println(buf.getByte(0) == slice.getByte(0));
+
+    }
+
+    public static void byteBufCopy() {
+        ByteBuf buf = Unpooled.copiedBuffer("hello world", UTF_8);
+        ByteBuf copy = buf.copy(0, 5);
+        System.out.println(copy.toString());
+
+        buf.setByte(0, 'a');
+
+        System.out.println(buf.getByte(0) == copy.getByte(0));
+
+    }
+
+    public static void byteBufSetGet() {
+        ByteBuf buf = Unpooled.copiedBuffer("hello world", UTF_8);
+        System.out.println(((char) buf.getByte(0)));
+
+        int readerIndex = buf.readerIndex();
+        int writerIndex = buf.writerIndex();
+
+        // set 方法不会修改索引
+        buf.setByte(0, 'a');
+
+        System.out.println(((char) buf.getByte(0)));
+
+        // 不会修改索引
+        System.out.println(readerIndex == buf.readerIndex());
+        System.out.println(writerIndex == buf.writerIndex());
+    }
+
+    public static void byteBufReadWrite() {
+        ByteBuf buf = Unpooled.copiedBuffer("hello world", UTF_8);
+        System.out.println(((char) buf.readByte()));
+
+        int readerIndex = buf.readerIndex();
+        int writerIndex = buf.writerIndex();
+
+        // write 方法会修改索引
+        buf.writeByte('!');
+
+        System.out.println(readerIndex == buf.readerIndex());
+        System.out.println(writerIndex == buf.writerIndex());
+    }
+
+    /**
+     * 获取 ByteBufBufferAllocator 引用
+     * 应用计数
+     */
+    public static void obtainByteBufferAllocator() {
+        Channel channel = CHANNEL_FROM_SOMEWHERE;
+        ByteBufAllocator allocator = channel.alloc();
+
+        ChannelHandlerContext context = CHANNEL_HANDLER_CONTEXT_FROM_SOMEWHERE;
+        ByteBufAllocator allocator1 = context.alloc();
+
+        // 从 ByteBufAllocator 分配一个 ByteBuf
+        ByteBuf buffer = allocator.directBuffer();
+        // 获取引用计数
+        int i = buffer.refCnt();
+
+        // 释放引用计数的对象
+        ByteBuf b = BYTE_BUF_FROM_SOMEWHERE;
+        boolean release = b.release();
+    }
+
+    public static void main(String[] args) {
+        byteBufReadWrite();
+    }
 
     private static void handleArray(byte[] array, int offset, int length) {
     }

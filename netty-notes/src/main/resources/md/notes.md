@@ -76,10 +76,16 @@ netty 的**核心组件**
   一个给定 Channel 的所有 IO 操作全部都由一个 Thread 执行
 
   - 一个 EventLoopGroup 包含一个或者多个 EventLoop；
+  
   - 一个 EventLoop 在它的生命周期内只和一个 Thread 绑定；
+  
   - 所有由 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理；
+  
   - 一个 Channel 在它的生命周期内只注册于一个 EventLoop；
+  
   - 一个 EventLoop 可能会被分配给一个或多个 Channel。
+  
+    ![Channel-EventLoop-EventLoopGroup-Thread关系](F:\IdeaProjects\netty-all\netty-notes\src\main\resources\img\Channel-EventLoop-EventLoopGroup-Thread关系.png)
 
 
 
@@ -227,17 +233,178 @@ java.nio.ByteBuffer -> io.netty.buffer.ByteBuf
 
 - 派生缓冲区
 
-  展示内容视图
+  展示内容视图，返回新的 ByteBuf，具有自己的读索引，写索引，标记索引。会修改原数据
+
+- 读写操作
+  - get / set 不修改索引
+  - read / write 修改索引
 
 
 
+ByteBufHolder 接口
+
+记录实际的数据 + 一些属性值
 
 
 
+ByteBuf 分配
+
+- 按需分配 ByteBufAllocator 接口，池化
+- Unpooled 缓冲区：创建未池化的 ByteBuf 实例
+- ByteBufUtil
 
 
 
+引用计数
 
+
+
+#### 6. ChannelHandler 和 ChannelPipeline
+
+
+
+##### 6.1 ChannelHandler
+
+- Channel 生命周期
+
+  - ChannelUnregistered：  Channel 已创建，还未注册到 EveltLoop
+  - ChannelRegistered：      Channel 已被注册到 EventLoop
+  - ChannelActive：              Channel 处于活动状态，可以接收发送数据
+  - ChannelInactive：           Channel 没有连接到远程节点
+
+  Channel 的状态发生改变时，会生成对应的事件，转发给 ChannelPipeline 中的 ChannelHandler 对其进行响应
+
+  
+
+- ChannelHandler 生命周期
+
+  - handlerAdded：      当把 ChannelHandler 添加到 ChannelPipeline 中时被调用
+  - handlerRemoved： 当把 ChannelHandler 从 ChannelPipeline 中移除时调用
+  - exceptionCaught：  处理过程中 ChannelPipeline 发生异常时调用
+
+  两个子接口
+
+  - ChannelInboundHandler：   处理入站数据以及各种状态变化
+
+  - ChannelOutboundHandler：处理出站数据运行拦截所有操作
+
+    可以按需推迟操作 或 事件
+
+    
+
+    ![ChannelHandler常用方法](../img/ChannelHandler常用方法.png)
+
+    
+
+    对应的适配器提供了基本实现，可以通过继承重写一些方法
+
+- 资源管理
+
+  完全使用完某个 ByteBuf 之后，调整其引用计数。否则会产生资源泄漏
+
+  可以开启泄漏检测 `java -Dio.netty.leakDetectionLevel=ADVANCED`
+
+
+
+##### 6.2 ChannelPipeline
+
+每一个新创建的 Channel 都将会被分配一个新的 ChannelPipeline。这项关联是永久性的；Channel 既不能附加另外一个 ChannelPipeline，也不能分离其当前的。
+
+事件将会被 ChannelInboundHandler 或者 ChannelOutboundHandler处理。随后，通过调用 ChannelHandlerContext 实现，它将被转发给同一超类型的下一个 ChannelHandler。
+
+ChannelHandlerContext 使得 ChannelHandler 能够和它的 ChannelPipeline 以及其他的 ChannelHandler 交互。ChannelHandler 可以通知其所属的 ChannelPipeline 中的下一个 ChannelHandler，甚至可以动态修改它所属的 ChannelPipeline
+
+![ChannelPipelineHandler布局](../img/ChannelPipelineHandler布局.png)
+
+ChannelPipeline 传播事件时，会测试下一个是否与事件运动方向相匹配，不匹配的会被跳过
+
+ChannelHandler 的阻塞 与 执行
+
+
+
+通过触发事件调用下一个 ChannelHandler 的入站 或 出站事件
+
+
+
+##### 6.3 ChannelHandlerContext 接口
+
+每当有 ChannelHandler 添加到 ChannelPipeline 中时，都会创建 ChannelHandlerContext。
+
+ChannelHandlerContext 的主要功能是管理它所关联的 ChannelHandler 和在同一个 ChannelPipeline 中的其他 ChannelHandler 之间的交互。
+
+ChannelHandlerContext 中有一些存在于 Channel 和 ChannelPipeline 中的方法
+
+- 如果调用 Channel 或 ChannelPipeline 中的方法，将沿着整个 ChannelPipeline 进行传播
+- 如果调用 ChannelHandlerContext 中的方法，将从所关联的 ChannelHandler 开始，只传播之后的 ChannelPipeline 中能处理该事件的 ChannelHandler
+
+![组件关系图](../img/组件关系图.png)
+
+在多个ChannelPipeline中安装同一个ChannelHandler 的一个常见的原因是用于收集跨越多个 Channel 的统计信息。ChannelHandler 需要添加 @Sharable 注解并且是线程安全的，否则被添加到多个 ChannelPipeline 时会触发异常
+
+
+
+##### 6.4 异常处理
+
+- 入站异常
+
+  异常抛出后，将从触发的位置开始流经 ChannelPipeline // TODO 是不是整条链
+
+  到 pipelines 尾端后如果没被处理，会被标记
+
+- 出站异常
+
+  1. 每个出站操作都返回一个 ChannelFuture，注册到其中的 ChannelFutureListener 将在操作完成时被通知操作是否成功
+  2. ChannelOutboundHandler 方法中通过 ChannelPromise 参数注册监听器
+
+
+
+#### 7. EventLoop 和 线程模型
+
+
+
+##### 7.1 线程模型概述
+
+池化 + 线程池
+
+
+
+##### 7.2 EventLoop 接口
+
+定义 Netty 的核心抽象，处理连接的生命周期中发生的事件
+
+一个给定 Channel 的所有 IO 操作全部都由一个 Thread 执行
+
+- 一个 EventLoopGroup 包含一个或者多个 EventLoop；
+- 一个 EventLoop 在它的生命周期内只**和一个 Thread 绑定**；
+- 所有由 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理；
+- 一个 Channel 在它的生命周期内只注册于一个 EventLoop；
+- 一个 EventLoop 可能会被**分配给一个或多个 Channel**。
+
+![EventLoop继承关系](../img/EventLoop继承关系.png)
+
+
+
+Netty4 中的 IO 和 事件处理 都分配给 EventLoop 的那个 Thread 处理
+
+
+
+##### 7.3 任务调度
+
+EventLoop 实现了 ScheduledExecutorService 接口
+
+```java
+Channel channel = CHANNEL_FROM_SOMEWHERE;
+ScheduledFuture<?> future = channel.eventLoop().scheduleAtFixedRate(() -> {
+    System.out.println("run every 10s");
+}, 10, 10, TimeUnit.SECONDS);
+
+// 终止操作
+future.cancel(true);
+```
+
+
+
+##### 7.4 实现细节
 
 
 
