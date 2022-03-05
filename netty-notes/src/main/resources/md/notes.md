@@ -406,13 +406,65 @@ future.cancel(true);
 
 ##### 7.4 实现细节
 
+Netty 线程的高性能，取决于对当前执行的 Thread 的身份的确定 (确定是否是分配给当前 Channel 以及它的 EventLoop 的那一个线程)
+
+如果（当前）调用线程正是支撑 EventLoop 的线程，那么所提交的代码块将会被（直接）执行。否则，EventLoop 将调度该任务以便稍后执行，并将它放入到内部队列中。当 EventLoop 下次处理它的事件时，它会执行队列中的那些任务/事件。这也就解释了任何的 Thread 是如何与 Channel 直接交互而无需在 ChannelHandler 中进行额外同步的。
+
+每个 EventLoop 都有它自已的任务队列，独立于任何其他的 EventLoop。
+
+- 异步传输
+
+![异步传输EventLoop分配方式](../img/异步传输EventLoop分配方式.png)
+
+- 阻塞传输
+
+  ![阻塞传输EventLoop传输方式](../img/阻塞传输EventLoop传输方式.png)
+
+  
+
+#### 8. 引导
+
+##### 8.1 BootStrap 类
+
+![引导类的层次结构](../img/引导类的层次结构.png)
+
+##### 8.2 引导客户端 和 无连接协议
+
+BootStrap 负责为客户端 和 使用无连接协议的应用程序创建 Channel
+
+![客户端引导过程](../img/客户端引导过程.png)
+
+##### 8.3 引导服务器
+
+![服务端引导过程](../img/服务端引导过程.png)
+
+##### 8.4 从 Channel 引导客户端
+
+![两个Channel之间共享EventLoop](../img/两个Channel之间共享EventLoop.png)
 
 
 
+##### 8.5 引导过程中添加多个 ChannelHandler
+
+扩展 ChannelInitializer<Channel> 类，重写 initChannel 方法
 
 
 
+##### 8.6 使用 Netty 的 ChannelOption 和 属性
+
+需要在 connect/bind 方法被调用前设置到 Channel 上面
 
 
 
+##### 8.7 引导 DatagramChannel
+
+Bootstrap 可以用于无连接的协议 DatagramChannel
+
+
+
+##### 8.8 关闭
+
+```java
+group.shutdownGracefully()
+```
 
