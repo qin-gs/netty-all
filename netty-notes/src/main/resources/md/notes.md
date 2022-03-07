@@ -420,7 +420,7 @@ Netty 线程的高性能，取决于对当前执行的 Thread 的身份的确定
 
   ![阻塞传输EventLoop传输方式](../img/阻塞传输EventLoop传输方式.png)
 
-  
+
 
 #### 8. 引导
 
@@ -468,3 +468,41 @@ Bootstrap 可以用于无连接的协议 DatagramChannel
 group.shutdownGracefully()
 ```
 
+
+
+#### 9. 单元测试
+
+EmbeddedChannel
+
+
+
+#### 10. 编解码器框架
+
+
+
+##### 10.1 什么是编解码器
+
+- 编码器：操作出站数据，将消息转换成适合传输的格式(字节流)
+- 解码器：操作入站数据，将网络字节流转换为应用程序的消息格式
+
+
+
+##### 10.2 解码器
+
+- 字节  -->   消息                 (ByteToMessageDecoder, ReplayingDecoder)
+- 消息  -->  另一种消息      (MessageToMessageDecoder)
+
+
+
+##### 10.3 编码器
+
+- 消息   -->   字节   (MessageToByteEncoder)
+- 消息   -->   消息
+
+
+
+##### 10.4 抽象的编解码器
+
+- ByteToMessageCodec
+- MessageToMessageCodec
+- CombinedChannelDuplexHandler
