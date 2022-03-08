@@ -506,3 +506,21 @@ EmbeddedChannel
 - ByteToMessageCodec
 - MessageToMessageCodec
 - CombinedChannelDuplexHandler
+
+
+
+
+
+#### 11. 预置的 ChannelHandler 和 编解码器
+
+
+
+##### 11.1 通过 SSL/TLS 包含 Netty 应用程序
+
+```java
+ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
+```
+
+
+
+##### 11.2 构建基于 Netty 的 http/https 应用程序
