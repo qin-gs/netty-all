@@ -524,3 +524,23 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 
 
 ##### 11.2 构建基于 Netty 的 http/https 应用程序
+
+- HttpRequestEncoder：操作出站数据，将数据编码为适合传输的字节流
+- HttpRequestDecoder：操作入站数据，将字节流转换为合适的消息格式
+
+
+
+- http 编码器，解码器，编解码器
+
+- 聚合 http 消息
+
+- http 压缩
+
+- 使用 https
+
+- websocket
+
+
+
+##### 11.3 空闲的连接和超时
+
