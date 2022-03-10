@@ -85,7 +85,7 @@ netty 的**核心组件**
   
   - 一个 EventLoop 可能会被分配给一个或多个 Channel。
   
-    ![Channel-EventLoop-EventLoopGroup-Thread关系](F:\IdeaProjects\netty-all\netty-notes\src\main\resources\img\Channel-EventLoop-EventLoopGroup-Thread关系.png)
+    ![Channel-EventLoop-EventLoopGroup-Thread关系](../img/Channel-EventLoop-EventLoopGroup-Thread关系.png)
 
 
 
@@ -267,7 +267,7 @@ ByteBuf 分配
 
 - Channel 生命周期
 
-  - ChannelUnregistered：  Channel 已创建，还未注册到 EveltLoop
+  - ChannelUnregistered：  Channel 已创建，还未注册到 EventLoop
   - ChannelRegistered：      Channel 已被注册到 EventLoop
   - ChannelActive：              Channel 处于活动状态，可以接收发送数据
   - ChannelInactive：           Channel 没有连接到远程节点
@@ -544,3 +544,42 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 
 ##### 11.3 空闲的连接和超时
 
+检测空闲连接 和 超时，及时释放资源
+
+通过重写 `io.netty.channel.ChannelInboundHandlerAdapter#userEventTriggered` 方法，处理 IdleStateEvent 事件
+
+- IdleStateHandler：如果指定时间内没有发送 或 接收 任何数据，该 Handler 会触发 IdleStateEvent 事件
+- ReadTimeoutHandler
+- WriteTimeoutHandler
+
+
+
+##### 11.4 解码基于分隔符的协议 和 基于长度的协议
+
+- 基于分隔符
+
+  - DelimiterBasedFrameDecoder：使用用户自定义的分隔符提起帧
+
+  - LineBasedFrameDecoder：         使用行尾符(\n\r)分隔
+
+
+
+- 基于长度
+  - FixedLengthFrameDecoder：            在构造函数中指定帧长度
+  - LengthFieldBasedFrameDecoder：  根据编码进帧头部的长度值提取帧
+
+
+
+##### 11.5 写大型数据
+
+- DefaultFileRegion：          使用 零拷贝 特性完成文件传输
+- ChunkedWriteHandler： 指出异步写大型数据量，不会导致大量内存消耗
+- ChunkedInput
+
+
+
+##### 11.6 序列化数据
+
+- jdk 序列化
+- jboss marshalling 序列化
+- protocol buffers 序列化
