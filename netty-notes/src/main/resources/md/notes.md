@@ -583,3 +583,23 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 - jdk 序列化
 - jboss marshalling 序列化
 - protocol buffers 序列化
+
+
+
+
+
+#### 12. WebSocket
+
+http/s  -->  WebSocket：升级握手
+
+处理 WebSocket 帧
+
+- BinaryWebSocketFrame
+- **TextWebSocketFrame**：包含真正需要处理的文本数据
+- ContinuationWebSocketFrame
+- CloseWebSocketFrame
+- PingWebSocketFrame
+- PongWebSocketFrame
+
+
+
