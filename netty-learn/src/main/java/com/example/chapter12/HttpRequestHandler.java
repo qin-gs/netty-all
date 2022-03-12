@@ -11,7 +11,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 
 /**
- * 处理 FullHttpRequest 消息
+ * 处理 FullHttpRequest 消息，
+ * 只管理 http 的请求 和 响应
  */
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -41,19 +42,19 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             ctx.fireChannelRead(request.retain());
         } else {
             // 处理 100 响应码
-            if (HttpHeaders.is100ContinueExpected(request)) {
+            if (HttpUtil.is100ContinueExpected(request)) {
                 // 发送一个 100 响应
                 send100Continue(ctx);
             }
             // 读取 index.html
             RandomAccessFile file = new RandomAccessFile(INDEX, "r");
-            DefaultHttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);
-            response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/html; charset=UTF-8");
-            boolean keepAlive = HttpHeaders.isKeepAlive(request);
+            DefaultHttpResponse response = new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+            response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html; charset=UTF-8");
+            boolean keepAlive = HttpUtil.isKeepAlive(request);
             // 如果请求 keep-alive，添加需要的 http 头信息
             if (keepAlive) {
-                response.headers().set(HttpHeaders.Names.CONTENT_LENGTH, file.length());
-                response.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+                response.headers().set(HttpHeaderNames.CONTENT_LENGTH, file.length());
+                response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
             }
             ctx.write(response);
             // 检查是否有 SslHandler，没有的话使用 ChunkedNioFile

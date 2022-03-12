@@ -136,7 +136,7 @@ ChannelHandlerAdapter 作为 ChannelHandler 的默认实现，可以只重写需
 - Bootstrap: 用于客户端，连接到远程主机端口，需要一个 EventLoopGroup
 - ServerBootstrap: 用于服务端，绑定到一个本地端口，需要两个 EventLoopGroup
   - 第一个只包含一个 ServerChannel，代表服务器自身的已绑定到某个本地端口的正在监听的台阶在
-  - 第二个将包含所有已创建的用来处理传入客户端连接(每个服务器已接受的连接都有一个)的 Channel
+  - 第二个将包含所有已创建的用来处理传入客户端连接(每个服d务器已接受的连接都有一个)的 Channel
 
 
 
