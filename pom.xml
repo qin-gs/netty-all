@@ -12,6 +12,7 @@
         <module>netty-notes</module>
         <module>netty-learn</module>
         <module>netty-app</module>
+        <module>netty-bilibili</module>
     </modules>
 
     <properties>
