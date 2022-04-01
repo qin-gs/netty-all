@@ -3,8 +3,10 @@ package com.example.nio;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -121,5 +123,74 @@ public class ByteBufferTest {
         ByteBuffer wrap = ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8));
         printAll(wrap);
     }
+
+    /**
+     * 分散读取
+     */
+    @Test
+    void scatterTest() {
+        try (FileChannel channel = new RandomAccessFile("src/test/resources/data.txt", "r").getChannel()) {
+            ByteBuffer one = ByteBuffer.allocate(3);
+            ByteBuffer two = ByteBuffer.allocate(3);
+            ByteBuffer three = ByteBuffer.allocate(5);
+            channel.read(new ByteBuffer[]{one, two, three});
+            one.flip();
+            two.flip();
+            three.flip();
+
+            printAll(one);
+            printAll(two);
+            printAll(three);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 集中写入
+     */
+    @Test
+    void gather() {
+        ByteBuffer one = StandardCharsets.UTF_8.encode("hello");
+        ByteBuffer two = StandardCharsets.UTF_8.encode("world");
+        // 汉字三个字节
+        ByteBuffer three = StandardCharsets.UTF_8.encode("世界");
+
+        try (FileChannel channel = new RandomAccessFile(new File("src/test/resources/hello.txt"), "rw").getChannel();) {
+            channel.write(new ByteBuffer[]{one, two, three});
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 拆分数据
+     */
+    @Test
+    void split() {
+        ByteBuffer buffer = ByteBuffer.allocate(64);
+        buffer.put("hello world,\n nice to meet you.\n Ho".getBytes(StandardCharsets.UTF_8));
+        getMessage(buffer);
+        buffer.put("w are you!\n".getBytes(StandardCharsets.UTF_8));
+        getMessage(buffer);
+    }
+
+    private void getMessage(ByteBuffer source) {
+        source.flip();
+        for (int i = 0; i < source.limit(); i++) {
+            if (source.get(i) == '\n') {
+                int len = i + 1 - source.position();
+                ByteBuffer target = ByteBuffer.allocate(len);
+                for (int j = 0; j < len; j++) {
+                    target.put(source.get());
+                }
+                printAll(target);
+            }
+        }
+        // 压缩已处理的数据
+        source.compact();
+    }
+
 
 }

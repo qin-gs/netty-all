@@ -10,7 +10,7 @@ non-blocking io 非阻塞io
 
   读写数据的双向通道 (可以从 channel 读，也可以写入 channel)
 
-  - FileChannel 文件
+  - FileChannel 文件，工作在阻塞模式下
   - DatagramChannel udp编程
   - SocketChannel tcp编程
   - ServerSocketChannel tcp 服务器端
