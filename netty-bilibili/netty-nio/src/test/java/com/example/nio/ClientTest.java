@@ -16,7 +16,10 @@ public class ClientTest {
     void client() throws IOException {
         SocketChannel channel = SocketChannel.open();
         channel.connect(new InetSocketAddress("localhost", 8080));
-        channel.write(StandardCharsets.UTF_8.encode("hello"));
-        System.out.println("wait...");
+        channel.write(StandardCharsets.UTF_8.encode("hello\nworld"));
+        System.out.println("channel.getLocalAddress() = " + channel.getLocalAddress());
+        // channel.close();
+
+        System.in.read();
     }
 }

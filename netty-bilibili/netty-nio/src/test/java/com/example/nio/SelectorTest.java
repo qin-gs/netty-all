@@ -5,15 +5,15 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.ArrayList;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 
 /**
  * 用 Selector 管理 Channel
@@ -40,16 +40,16 @@ public class SelectorTest {
         selectionKey.interestOps(SelectionKey.OP_ACCEPT);
         log.debug(selectionKey.toString());
 
-        List<SocketChannel> channels = new ArrayList<>();
         while (true) {
             // 没有事件则阻塞，有事件才会恢复运行
             // 如果有事件未处理，不会阻塞；cancel 之后会恢复阻塞
             selector.select();
             // 处理事件，获取所有可用事件
-            Set<SelectionKey> keys = selector.selectedKeys();
-            Iterator<SelectionKey> iterator = keys.iterator();
+            Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
+                // 处理的 key 需要手动移除掉
+                iterator.remove();
                 log.debug(key.toString());
 
                 // 区分事件类型
@@ -63,13 +63,25 @@ public class SelectorTest {
                     // 将 Channel 注册进去
                     SelectionKey acceptKey = accept.register(selector, 0, null);
                     acceptKey.interestOps(SelectionKey.OP_READ);
-                } else if (key.isAcceptable()) {
-                    // 读取数据
-                    SocketChannel ch = (SocketChannel) key.channel();
-                    ByteBuffer buffer = ByteBuffer.allocate(32);
-                    ch.read(buffer);
-                    buffer.flip();
-                    ByteBufferUtil.printAll(buffer);
+                } else if (key.isReadable()) {
+                    try {
+                        // 读取数据
+                        SocketChannel ch = (SocketChannel) key.channel();
+                        // 需要处理消息边界
+                        ByteBuffer buffer = ByteBuffer.allocate(32);
+                        // 正常断开，返回值为 -1
+                        int read = ch.read(buffer);
+                        if (read == -1) {
+                            key.cancel();
+                        } else {
+                            buffer.flip();
+                            System.out.println(StandardCharsets.UTF_8.decode(buffer));
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        // 如果客户端出问题，需要取消
+                        key.cancel();
+                    }
                 }
             }
         }
