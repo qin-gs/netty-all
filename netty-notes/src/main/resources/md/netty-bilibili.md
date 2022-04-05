@@ -31,7 +31,7 @@ non-blocking io 非阻塞io
     // ... 重复读取
     ```
 
-    
+    不能被多个 Channel 共同使用，需要为每个 Channel 都配置一个独立的 buffer
 
   - Short/Int/Long/Float/Double/CharBuffer
 
