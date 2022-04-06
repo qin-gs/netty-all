@@ -1,4 +1,4 @@
-package com.example.nio;
+package com.example.nio.msg;
 
 import org.junit.jupiter.api.Test;
 
