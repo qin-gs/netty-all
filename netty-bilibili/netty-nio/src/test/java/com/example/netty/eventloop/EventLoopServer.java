@@ -9,12 +9,13 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 public class EventLoopServer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         new ServerBootstrap()
                 // 处理 accept 事件，  处理 SocketChannel 的读写
@@ -33,5 +34,6 @@ public class EventLoopServer {
                     }
                 })
                 .bind(new InetSocketAddress("localhost", 8080));
+        System.in.read();
     }
 }

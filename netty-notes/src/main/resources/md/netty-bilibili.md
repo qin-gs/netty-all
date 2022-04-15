@@ -64,3 +64,64 @@ ByteBuffer.allocate(32); // jvm 内存
 ByteBuffer.allocateDirect(32); // 直接内存
 ```
 
+
+
+### EventLoop
+
+ChannelHandler 如何切换线程
+
+```java
+// io.netty.channel.AbstractChannelHandlerContext#invokeChannelRead(io.netty.channel.AbstractChannelHandlerContext, java.lang.Object)
+static void invokeChannelRead(final AbstractChannelHandlerContext next, Object msg) {
+    final Object m = next.pipeline.touch(ObjectUtil.checkNotNull(msg, "msg"), next);
+    // 查找下一个 Handler 的 EventLoop
+    EventExecutor executor = next.executor();
+
+    // 当前 handler 的线程是不是和 executor 是同一个线程
+    // 是的话直接执行
+    if (executor.inEventLoop()) {
+        next.invokeChannelRead(m);
+    } else {
+        // 如果不是，将要执行的代码作为任务提交给下一个handler的线程来处理
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                next.invokeChannelRead(m);
+            }
+        });
+    }
+}
+```
+
+
+
+
+
+### Channel
+
+- close：关闭 channel
+- closeFuture：处理 channel 关闭
+  - sync 同步等待 channel 关闭
+  - addListener 异步等待 channel 关闭
+- pipeline：添加处理器
+- write：写入数据
+- writeAndFlush：写出数据并刷出
+
+
+
+ChannelFuture
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
