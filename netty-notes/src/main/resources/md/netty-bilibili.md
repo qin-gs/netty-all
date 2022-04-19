@@ -113,15 +113,32 @@ ChannelFuture
 
 
 
+netty 通过异步提高了吞吐量，并没有缩短相应时间
 
 
 
+### io.netty.util.concurrent.Future  &  io.netty.util.concurrent.Promise
+
+<img src="../img/netty中的Future接口.png" alt="netty中的Future接口" style="zoom:50%;" />
+
+- java.util.concurrent.Future **同步**等待任务结束才能得到结果
+- io.netty.util.concurrent.Future **异步**等任务结束后得到结果
+- io.netty.util.concurrent.Promise 脱离了独立任务存在，作为两个线程间传递结果的容器
 
 
 
-
-
-
-
-
+| 方法        | jdk Future                         | netty Future                            | Promise      |
+| ----------- | ---------------------------------- | --------------------------------------- | ------------ |
+| cancel      | 取消任务                           |                                         |              |
+| isCanceled  | 判断是否取消                       |                                         |              |
+| isDone      | 判断任务是否完成，无法区分成功失败 |                                         |              |
+| get         | 获取任务结果，阻塞等到             |                                         |              |
+| getNow      |                                    | 获取结果，非阻塞，未产生结果是返回 null |              |
+| await       |                                    | 等待任务结束，任务失败也不会抛异常      |              |
+| sync        |                                    | 等待任务结束，任务失败抛异常            |              |
+| isSuccess   |                                    | 判断是否成功                            |              |
+| cause       |                                    | 获取失败信息，非阻塞，没有失败返回 null |              |
+| addListener |                                    | 添加回调，异步接收结果                  |              |
+| setSuccess  |                                    |                                         | 设置成功结果 |
+| setFailure  |                                    |                                         | 设置失败结果 |
 

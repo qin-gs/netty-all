@@ -31,7 +31,7 @@ public class EventLoopClient {
                 })
                 // 连接到服务器，异步非阻塞，会创建另外一个线程去建立连接
                 .connect(new InetSocketAddress("localhost", 8080));
-        // 1. sync 方法阻塞当前线程(主线程)至 nio 线程建立完毕
+        // 1. sync 方法阻塞当前线程(主线程)至 nio 连接建立完毕
         Channel channel = channelFuture.sync().channel();
         log.info(channel.toString());
         channel.writeAndFlush("hello ");
