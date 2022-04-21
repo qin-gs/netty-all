@@ -142,3 +142,11 @@ netty 通过异步提高了吞吐量，并没有缩短相应时间
 | setSuccess  |                                    |                                         | 设置成功结果 |
 | setFailure  |                                    |                                         | 设置失败结果 |
 
+
+
+### Handler & Pipeline
+
+Handler
+
+- ChannelInboundHandler：处理入站数据
+- ChannelOutboundHandler：处理出站数据
