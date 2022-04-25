@@ -150,3 +150,49 @@ Handler
 
 - ChannelInboundHandler：处理入站数据
 - ChannelOutboundHandler：处理出站数据
+
+
+
+
+
+### ByteBuf
+
+默认使用池化技术进行重用，如果不需要可以配置虚拟机参数
+
+```java
+-Dio.netty.allocator.type=polled
+```
+
+```java
+ // 会自动扩容 (默认为 256)
+ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(32);
+buffer.writeBytes("a".repeat(300).getBytes());
+```
+
+直接内存(默认) 和 堆内存
+
+```java
+ByteBuf heapBuffer = ByteBufAllocator.DEFAULT.heapBuffer(32);
+ByteBuf directBuffer = ByteBufAllocator.DEFAULT.directBuffer(32);
+```
+
+**完全使用完(最后一个使用 handler(头尾默认会释放))**某个 ByteBuf 之后，调整其引用计数。否则会产生资源泄漏
+
+```java
+// io.netty.channel.DefaultChannelPipeline.TailContext 一个入站处理器
+// channelRead 方法中进行释放(判断类型是不是 ReferenceCounted 是的话进行释放，否则说明已经将数据转换成了其他类型，不需要释放)
+
+// io.netty.channel.DefaultChannelPipeline.HeadContext 一个 入站 + 出站 处理器
+/// write 方法中释放 ( TODO 这里有一个出站缓冲区)
+```
+
+
+
+零拷贝
+
+- 文件 channel 向 socket channel 传输数据时不经过java内存，直接从文件走到 socket，减少内存复制
+
+- 对 ByteBuf 进行切片(slice)，没有进行内存复制，切片有自己的读写指针
+
+<img src="../img/ByteBuf切片.jpeg" alt="ByteBuf切片" style="zoom:50%;" />
+

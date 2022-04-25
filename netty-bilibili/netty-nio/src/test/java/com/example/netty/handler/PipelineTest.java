@@ -37,7 +37,10 @@ public class PipelineTest {
                             public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
                                 log.info("2");
                                 super.channelRead(ctx, msg);
-                                ch.writeAndFlush(ctx.alloc().buffer().writeBytes("hello".getBytes(StandardCharsets.UTF_8)));
+                                // 使用 ctx 写数据，不会触发后面的出站处理器 (会向前找)
+                                ctx.writeAndFlush(ctx.alloc().buffer().writeBytes("hello".getBytes(StandardCharsets.UTF_8)));
+                                // 写出数据，调用出站处理器
+                                // ch.writeAndFlush(ctx.alloc().buffer().writeBytes("hello".getBytes(StandardCharsets.UTF_8)));
                             }
                         });
                         pipeline.addLast("第一个出站数据处理", new ChannelOutboundHandlerAdapter() {
