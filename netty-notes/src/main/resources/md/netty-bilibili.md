@@ -157,6 +157,12 @@ Handler
 
 ### ByteBuf
 
+- 池化技术进行重用
+- 读写指针分离，不需要切换读写模式
+- 自动扩容
+- 支持链式调用
+- 零拷贝
+
 默认使用池化技术进行重用，如果不需要可以配置虚拟机参数
 
 ```java
@@ -193,6 +199,12 @@ ByteBuf directBuffer = ByteBufAllocator.DEFAULT.directBuffer(32);
 - 文件 channel 向 socket channel 传输数据时不经过java内存，直接从文件走到 socket，减少内存复制
 
 - 对 ByteBuf 进行切片(slice)，没有进行内存复制，切片有自己的读写指针
+- 对 ByteBuf 进行组合(Composite)，没有进行内存复制，有自己的读写指针
+- Unpooled 一个工具类
 
 <img src="../img/ByteBuf切片.jpeg" alt="ByteBuf切片" style="zoom:50%;" />
+
+
+
+### 进阶操作
 
