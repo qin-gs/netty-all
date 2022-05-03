@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>netty-nio</module>
+        <module>netty-chat</module>
     </modules>
 
     <properties>

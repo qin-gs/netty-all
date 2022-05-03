@@ -208,3 +208,49 @@ ByteBuf directBuffer = ByteBufAllocator.DEFAULT.directBuffer(32);
 
 ### 进阶操作
 
+- 基于分隔符
+
+  - DelimiterBasedFrameDecoder：使用用户自定义的分隔符提起帧
+
+  - LineBasedFrameDecoder：         使用行尾符(\n\r)分隔
+
+- 基于长度
+
+  - FixedLengthFrameDecoder：            在构造函数中指定帧长度
+
+  - LengthFieldBasedFrameDecoder：  根据编码进帧头部的长度值提取帧
+
+    - maxFrameLength - 发送的数据包最大长度；
+
+    - lengthFieldOffset - 长度域偏移量，指的是长度域位于整个数据包字节数组中的下标；
+
+    - lengthFieldLength - 长度域的自己的字节数长度。
+
+    - lengthAdjustment – 长度域的偏移量矫正。 如果长度域的值，除了包含有效数据域的长度外，还包含了其他域（如长度域自身）长度，那么，就需要进行矫正。矫正的值为：包长 - 长度域的值 – 长度域偏移 – 长度域长。
+
+    - initialBytesToStrip – 丢弃的起始字节数。丢弃处于有效数据前面的字节数量。比如前面有4个节点的长度域，则它的值为4。
+
+
+
+### 协议设计与解析
+
+魔数，版本号，序列化算法，指令类型，请求序号，正文长度，正文内容
+
+redis 的协议：
+
+```
+*3\r\n  #消息一共有三行
+$3\r\n #第一行有长度为3
+set\r\n #第一行的消息
+$4\r\n  #第二行长度为4
+name\r\n #第二行的消息
+$6\r\n #第三行长度为6
+123456\r\n #第三行的消息
++OK\r\n #操作成功
+```
+
+http 协议：HttpServerCodec 处理
+
+
+
+ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享，代码证通过 @Sharable 注解标识是否可以共享 (解码器一般不能共享
