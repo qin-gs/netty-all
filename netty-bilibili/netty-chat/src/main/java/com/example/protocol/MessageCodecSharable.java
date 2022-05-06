@@ -1,5 +1,6 @@
 package com.example.protocol;
 
+import com.example.config.Config;
 import com.example.message.Message;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -28,7 +29,7 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 版本
         out.writeByte(1);
         // 序列化方式 jdk 0, json 1
-        out.writeByte(0);
+        out.writeByte(Config.getSerializerAlgorithm().ordinal());
         // 字节的指令类型 (登录，聊天，建群等)
         out.writeByte(msg.getMessageType());
         // 序列id
@@ -36,10 +37,7 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         // 对齐填充 (将前面数据的内容填充成 12 字节)
         out.writeByte(0xff);
         // 序列化
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-        oos.writeObject(msg);
-        byte[] bytes = baos.toByteArray();
+        byte[] bytes = Config.getSerializerAlgorithm().serialize(msg);
 
         // 长度
         out.writeInt(bytes.length);
@@ -64,8 +62,13 @@ public class MessageCodecSharable extends MessageToMessageCodec<ByteBuf, Message
         int length = in.readInt();
         byte[] bytes = new byte[length];
         in.readBytes(bytes, 0, length);
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-        Message message = (Message) ois.readObject();
+
+        // 找到反序列化算法
+        Serializer.Algorithm algorithm = Serializer.Algorithm.values()[serializerType];
+        // 确定消息类型 (Message 是抽象的)
+        Class<? extends Message> messageClass = Message.getMessageClass(messageType);
+        // 进行反序列化
+        Message message = algorithm.deserialize(messageClass, bytes);
 
         log.debug("{}, {}, {}, {}, {}, {}", magicNum, version, serializerType, messageType, sequenceId, length);
         log.debug("{}", message);

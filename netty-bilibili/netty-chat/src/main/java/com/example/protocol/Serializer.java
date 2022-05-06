@@ -11,14 +11,21 @@ import java.nio.charset.StandardCharsets;
  */
 public interface Serializer {
 
-    // 反序列化方法
+    /**
+     * 反序列化方法
+     */
     <T> T deserialize(Class<T> clazz, byte[] bytes);
 
-    // 序列化方法
+    /**
+     * 序列化方法
+     */
     <T> byte[] serialize(T object);
 
     enum Algorithm implements Serializer {
 
+        /**
+         * 使用 java 自带的序列化算法
+         */
         Java {
             @Override
             public <T> T deserialize(Class<T> clazz, byte[] bytes) {
@@ -43,6 +50,9 @@ public interface Serializer {
             }
         },
 
+        /**
+         * 使用 json
+         */
         Json {
             @Override
             public <T> T deserialize(Class<T> clazz, byte[] bytes) {
@@ -53,12 +63,13 @@ public interface Serializer {
 
             @Override
             public <T> byte[] serialize(T object) {
-                Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassCodec()).create();
+                Gson gson = new GsonBuilder().serializeNulls().registerTypeAdapter(Class.class, new ClassCodec()).create();
                 String json = gson.toJson(object);
                 return json.getBytes(StandardCharsets.UTF_8);
             }
         }
     }
+
     class ClassCodec implements JsonSerializer<Class<?>>, JsonDeserializer<Class<?>> {
 
         @Override
