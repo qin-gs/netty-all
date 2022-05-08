@@ -253,4 +253,37 @@ http 协议：HttpServerCodec 处理
 
 
 
-ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享，代码证通过 @Sharable 注解标识是否可以共享 (解码器一般不能共享
+ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享，代码证通过 @Sharable 注解标识是否可以共享 (解码器一般不能共享)
+
+
+
+### 参数
+
+1. connect_timeout_mills
+
+   SocketChannel 参数
+
+   客户端建立连接后，指定时间内无法连接则抛出异常
+
+   SO_TIMEOUT 用于阻塞io，accept, read 等是无限等待的，如果不希望无限等待使用该参数
+
+   netty 是非阻塞的
+
+   通过定时任务来完成 Promise
+
+
+
+2. SO_BACKLOG
+
+   - 半连接队列 (sync queue)：/proc/sys/net/ipv4/tcp_max_syn_backlog 文件指定
+   - 全连接队列 (accept queue)：/proc/sys/net/core/somaxconn 指定；如果该队列满了，server 将发送一个拒绝错误到 client；同时指定取较小值
+
+   ```java
+   // java.nio.channels.ServerSocketChannel#bind 方法中赋值 backlog
+   //给的默认值：
+   // io.netty.channel.socket.ServerSocketChannelConfig
+   // io.netty.channel.socket.DefaultServerSocketChannelConfig
+   
+   int somaxconn = PlatformDependent.isWindows() ? 200 : 128;
+   ```
+
