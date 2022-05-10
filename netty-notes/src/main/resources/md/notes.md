@@ -6,6 +6,13 @@ NIO
 
 ![使用Selector的非阻塞IO](../img/使用Selector的非阻塞IO.png)
 
+
+
+- 非阻塞网络调用使得我们可以不必等待一个操作的完成。 完全异步的I/O 正是基于这个特性构建的，并且更进一步: 异步方法会立即返回，并且在它完成时，会直接或者在稍后的某个时间点通知用户。
+- 选择器使得我们能够通过较少的线程便可监视许多连接上的事件。
+
+
+
 Netty 通过触发事件将 Selector 从应用程序中抽象出来，消除了本来需要手动编写的派发代码。在内部，为每个 Channel 分配一个 EventLoop(本身由一个线程驱动，无需考虑同步问题)，用来处理所有的事件
 
 netty 的**核心组件**
@@ -20,15 +27,17 @@ netty 的**核心组件**
 
 - Future
 
+  它将在未来的某个时刻完成，并提供对其结果的访问
+
   ChannelFuture 异步操作结果的占位符
 
-  ChannelFutureListener 监听操作是否完成，完成后调用，避免了手动检查操作是否完成
+  ChannelFutureListener 监听操作是否完成，完成后调用，**避免了手动检查**操作是否完成
 
 - 事件 和 ChannelHandler
 
   基于已发生的事件触发适当的动作
 
-    - 入站事件：李恩杰已被激活或连接失活，数据读取，用户事件，错误事件
+    - 入站事件：连接已被激活或连接失活，数据读取，用户事件，错误事件
     - 出站事件：打开或关闭到远程节点的连接，将数据写入套接字
 
   入站事件 -> 入站处理器
@@ -36,6 +45,12 @@ netty 的**核心组件**
   出站事件 -> 出站处理器
 
   ChannelHandler 处理器的基本抽象
+  
+- EventLoop
+
+  EventLoop 本身只由一个线程驱动，其处理了一个 Channel 的所有I/O 事件，并且在该 EventLoop 的整个生命周期内都不会改变。这个设计消除了在 ChannelHandler 实现中需要进行同步的任何顾虑
+
+
 
 #### 2. 应用实例
 
@@ -46,6 +61,10 @@ netty 的**核心组件**
     - 针对不同类型的事件调用 ChannelHandler
     - 应用程序通过实现 或 扩展 ChannelHandler 来挂钩到事件的生命周期，提供自定义的应用程序逻辑
     - 架构上，ChannelHandler 有助于报错业务逻辑 和 网络处理代码 的分离。简化了开发过程
+
+每个 Channel 都拥有一个与之相关联的 ChannelPipeline,其持有一个 ChannelHandler 的实例链。在默认的情况下，ChannelHandler 会把对它的方法的调用转发给链中的下一个 ChannelHandler。因此，如果exceptionCaught() 方法没有被该链中的某处实现，那么所接收的异常将会被传递到ChannelPipeline 的尾端并被记录。为此，应用程序应该提供至少有一个实现了 exceptionCaught() 方法的 ChannelHandler
+
+
 
 ![服务端的ChannelHandler](../img/服务端的ChannelHandler.png)
 
@@ -91,7 +110,9 @@ netty 的**核心组件**
 
 - ChannelFuture: 异步通知
 
-  对于异步操作，在特定的时间段确定其结果
+  对于异步操作，在之后特定的时间点确定其结果
+  
+  通过 addListener 注册 ChannelFutureListener 完成
 
 
 
@@ -105,7 +126,7 @@ netty 的**核心组件**
 
 - ChannelPipeline
 
-  提供了 ChannelHandler 链的容器，并定义了用于该链上传播入站 和 出站 时间流的 api。Channel 被创建时，会自动分派到专属的 Pipeline
+  提供了 ChannelHandler 链的容器，并定义了用于该链上传播入站 和 出站 事件流的 api。Channel 被创建时，会自动分派到专属的 Pipeline
 
   ChannelPipeline 是 ChannelHandler 的编排顺序，使事件流经 ChannelPipeline 是 ChannelHandler 的工作
 
@@ -118,6 +139,13 @@ netty 的**核心组件**
 ChannelHandler 被添加到 ChannelPipeline 时，会被分配一个 ChannelHandlerContext
 
 ChannelHandlerAdapter 作为 ChannelHandler 的默认实现，可以只重写需要的方法 或 事件
+
+
+
+在Netty中,有两种发送消息的方式
+
+- 写到 Channel 中：方式将会导致消息从ChannelPipeline的尾端开始流动
+- 写到和 ChannelHandler 相关联的 ChannelHandlerContext 对象中：导致消息从 ChannelPipeline 中的下一个 ChannelHandler 开始流动。
 
 
 

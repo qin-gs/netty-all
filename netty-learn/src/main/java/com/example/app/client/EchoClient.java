@@ -1,4 +1,4 @@
-package com.example.client;
+package com.example.app.client;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
