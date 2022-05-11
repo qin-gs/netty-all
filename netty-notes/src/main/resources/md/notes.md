@@ -163,8 +163,10 @@ ChannelHandlerAdapter 作为 ChannelHandler 的默认实现，可以只重写需
 
 - Bootstrap: 用于客户端，连接到远程主机端口，需要一个 EventLoopGroup
 - ServerBootstrap: 用于服务端，绑定到一个本地端口，需要两个 EventLoopGroup
-  - 第一个只包含一个 ServerChannel，代表服务器自身的已绑定到某个本地端口的正在监听的台阶在
+  - 第一个只包含一个 ServerChannel，代表服务器自身的已绑定到某个本地端口的正在监听的套接字
   - 第二个将包含所有已创建的用来处理传入客户端连接(每个服d务器已接受的连接都有一个)的 Channel
+
+与 ServerChannel 相关联的 EventLoopGroup 将分配-一个负责为传入连接请求创建 Channel 的 EventLoop。一但连接被接受，第二个 EventLoopGroup 就会给它的 Channel 分配一个 EventLoop。
 
 
 
@@ -172,17 +174,19 @@ ChannelHandlerAdapter 作为 ChannelHandler 的默认实现，可以只重写需
 
 每个 Channel 都被被分配一个 ChannelPipeline 和 ChannelConfig(包含该 Channel 的所有配置)
 
-ChannelPipeline 持有所有 ChannelHandler(应用与入站 和 出站数据 和 事件)
+ChannelPipeline 持有所有 ChannelHandler(应用入站 和 出站数据 和 事件)
 
 - 转换数据格式
 - 提供异常通知
-- 提供 Channel 变成获得 或 非活动的通知
+- 提供 Channel 变成活动 或 非活动的通知
 - 提供 Channel 注册 或 注销 到 EventLoop 的通知
 - 提供用户自定义事件的通知
 
 内置的传输
 
 - NIO: 基于选择器(java.nio.channels)
+
+  选择器运行在-一个检查状态变化并对其做出相应响应的线程上,在应用程序对状态的改变做出响应之后，选择器将会被重置，并将重复这个过程。
 
   所有 IO 操作的全异步实现，可以请求在 Channel 状态发生变化时得到通知
 
@@ -211,17 +215,33 @@ ChannelPipeline 持有所有 ChannelHandler(应用与入站 和 出站数据 和
 
 java.nio.ByteBuffer -> io.netty.buffer.ByteBuf
 
+- 它可以被用户自定义的缓冲区类型扩展;
+
+- 通过内置的复合缓冲区类型实现了透明的零拷贝;
+
+- 容量可以按需增长(类似于JDK的 StringBuilder );
+
+- 在读和写这两种模式之间切换不需要调用 ByteBuffer 的 flip() 方法;
+
+- 读和写使用了不同的索引;
+
+- 支持方法的链式调用;
+
+- 支持引用计数;
+
+- 支持池化。
+
+
+
 1. 工作原理
 
    维护两个索引(读取，写入)
 
 2. 使用模式
 
-   - 堆缓冲区
+   - 堆缓冲区：支撑数组(backing array)，数据存储在 jvm 的堆中，在没有使用池化的情况下提供快速的分配和释放
 
-     支撑数组(backing array)
-
-   - 直接缓冲区
+   - 直接缓冲区：避免在每次调用本地I/O操作之前(或者之后)将缓冲区的内容复制到一个中间缓冲区( 或者从中间缓冲区把内容复制到缓冲区)。
 
    - 复合缓冲区
 
@@ -239,25 +259,21 @@ java.nio.ByteBuffer -> io.netty.buffer.ByteBuf
 
 - 顺序访问索引
 
+  ![ByteBuf的内部分段](F:\IdeaProjects\netty-all\netty-notes\src\main\resources\img\ByteBuf的内部分段.png)
+
   通过 读索引，写索引 将数据划分为三个区域
 
-- 可丢弃字节
+- 可丢弃字节 / 可读字节 / 可写字节
 
   discardReadBytes 方法丢弃已经读过的数据，会导致内存复制(需要将可读字节移动到缓冲区的开始位置)
 
-- 可读字节
-
-- 可写字节
-
 - 索引管理
 
-  markReaderIndex, markWriteIndex, resetWriteIndex, resetReadIndex, clear
+  markReaderIndex, markWriteIndex, resetWriteIndex, resetReadIndex, clear(读写索引都设为0)
 
 - 查找操作
 
-  确定索引 indexOf
-
-  io.netty.util.ByteProcessor
+  确定索引 indexOf；可以通过 `io.netty.util.ByteProcessor` 进行复杂查询
 
 - 派生缓冲区
 
