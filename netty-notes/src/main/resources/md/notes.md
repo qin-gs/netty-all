@@ -294,12 +294,18 @@ ByteBufHolder 接口
 ByteBuf 分配
 
 - 按需分配 ByteBufAllocator 接口，池化
+
+  基于 堆/直接内存 的，CompositeBuf 组合的；可以通过Channel#alloc 或 ChannelHandlerContext#alloc 获取
+
 - Unpooled 缓冲区：创建未池化的 ByteBuf 实例
+
 - ByteBufUtil
 
 
 
 引用计数
+
+netty 为 ByteBuf 和 ByteByfHolder 引入了引用计数
 
 
 
@@ -313,7 +319,7 @@ ByteBuf 分配
 
   - ChannelUnregistered：  Channel 已创建，还未注册到 EventLoop
   - ChannelRegistered：      Channel 已被注册到 EventLoop
-  - ChannelActive：              Channel 处于活动状态，可以接收发送数据
+  - ChannelActive：              Channel 处于活动状态(已经连接到远程节点)，可以接收发送数据
   - ChannelInactive：           Channel 没有连接到远程节点
 
   Channel 的状态发生改变时，会生成对应的事件，转发给 ChannelPipeline 中的 ChannelHandler 对其进行响应
@@ -326,21 +332,39 @@ ByteBuf 分配
   - handlerRemoved： 当把 ChannelHandler 从 ChannelPipeline 中移除时调用
   - exceptionCaught：  处理过程中 ChannelPipeline 发生异常时调用
 
-  两个子接口
+  两个子接口 和 对应的适配器
 
-  - ChannelInboundHandler：   处理入站数据以及各种状态变化
+  - ChannelInboundHandler(Adapter)：   处理入站数据以及各种状态变化
 
-  - ChannelOutboundHandler：处理出站数据运行拦截所有操作
+    与 Channel 生命周期相关；重写 channelRead 方法时，需要显式的释放与池化的 ByteBuf 实例相关的内存 (SimpleChannelInboundHandler 会在 channelRead0 方法消费后自动释放资源)
 
-    可以按需推迟操作 或 事件
+  - ChannelOutboundHandler(Adapter)：处理出站数据运行拦截所有操作
 
+    可以按需推迟操作 或 事件 (ChannelPromise, ChannelFuture)
+
+    ```java
+    // 在出站方向这边，如果处理了write()操作并丢弃了一个消息，那么也应该负责释放它；
+    // 不仅要释放资源，还要通知 ChannelPromise。 否则可能会出现 ChannelFutureListener 收不到某个消息已经被处理了的通知的情况。
+    // 总之，如果一个消息被消费或者丢弃了，并且没有传递给 ChannelPipeline 中的下一个 Channe lOutboundHandler ,那么用户就有责任调用 ReferenceCountUtil.release()。
+    // 如果消息到达了实际的传输层,那么当它被写人时或者 Channel 关闭时，都将被自动释放。
+    @ChannelHandler.Sharable
+    class DiscardOutboundHandler extends ChannelOutboundHandlerAdapter {
     
-
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            // 释放资源
+            // 如果消息被消费 或 被丢弃了，没有传递给 ChannelPipeline 中的下一个 ChannelOutboundHandler，用户需要调用 release 方法
+            // 如果消息达到了实际的传输层，当它被写入或 Channel 关闭时，会被自动释放
+            ReferenceCountUtil.release(msg);
+            // 通知 ChannelPromise 数据已经被处理了
+            promise.setSuccess();
+        }
+    }
+    ```
+    
     ![ChannelHandler常用方法](../img/ChannelHandler常用方法.png)
 
-    
 
-    对应的适配器提供了基本实现，可以通过继承重写一些方法
 
 - 资源管理
 
@@ -356,17 +380,23 @@ ByteBuf 分配
 
 事件将会被 ChannelInboundHandler 或者 ChannelOutboundHandler处理。随后，通过调用 ChannelHandlerContext 实现，它将被转发给同一超类型的下一个 ChannelHandler。
 
-ChannelHandlerContext 使得 ChannelHandler 能够和它的 ChannelPipeline 以及其他的 ChannelHandler 交互。ChannelHandler 可以通知其所属的 ChannelPipeline 中的下一个 ChannelHandler，甚至可以动态修改它所属的 ChannelPipeline
+ChannelHandlerContext 使得 ChannelHandler 能够和它的 ChannelPipeline 以及其他的 ChannelHandler 交互。ChannelHandler 可以通知其所属的 ChannelPipeline 中的下一个 ChannelHandler，甚至可以动态修改它所属的 ChannelPipeline (addLast, adFirst, remove...)
 
 ![ChannelPipelineHandler布局](../img/ChannelPipelineHandler布局.png)
 
 ChannelPipeline 传播事件时，会测试下一个是否与事件运动方向相匹配，不匹配的会被跳过
 
+
+
 ChannelHandler 的阻塞 与 执行
 
+通常 ChannelPipeline 中的每一个 ChannelHandler 都是通过它的 EventLoop( I/O线程)来处理传递给它的事件的。所以不要阻塞这个线程，因为这会对整体的 I/O 处理产生负面的影响。
+
+如果需要阻塞使用 EventExecutorGroup，如果一个事件被传递给一个自定义的 EventExecutorGroup ,它将被包含在这个 EventExecutorGroup 中的某个 EventExecutor 所处理，从而被从该 Channel 本身的 EventLoop 中移除。对于这种用例，Netty 提供了一个叫 DefaultEventExecutorGroup 的默认实现。
 
 
-通过触发事件调用下一个 ChannelHandler 的入站 或 出站事件
+
+可以通过触发事件调用 ChannelPipeline 中下一个 ChannelHandler 的入站 或 出站事件
 
 
 
@@ -374,7 +404,7 @@ ChannelHandler 的阻塞 与 执行
 
 每当有 ChannelHandler 添加到 ChannelPipeline 中时，都会创建 ChannelHandlerContext。
 
-ChannelHandlerContext 的主要功能是管理它所关联的 ChannelHandler 和在同一个 ChannelPipeline 中的其他 ChannelHandler 之间的交互。
+ChannelHandlerContext 的主要功能是管理它所关联的 ChannelHandler 和在同一个 ChannelPipeline 中的其他 ChannelHandler 之间的交互。事件从一个 ChannelHandler 到下一个 ChannelHandler 的移动是由ChannelHandlerContext 上的调用完成的。
 
 ChannelHandlerContext 中有一些存在于 Channel 和 ChannelPipeline 中的方法
 
@@ -383,7 +413,7 @@ ChannelHandlerContext 中有一些存在于 Channel 和 ChannelPipeline 中的�
 
 ![组件关系图](../img/组件关系图.png)
 
-在多个ChannelPipeline中安装同一个ChannelHandler 的一个常见的原因是用于收集跨越多个 Channel 的统计信息。ChannelHandler 需要添加 @Sharable 注解并且是线程安全的，否则被添加到多个 ChannelPipeline 时会触发异常
+在多个ChannelPipeline中安装同一个ChannelHandler 的一个常见的原因是用于**收集跨越多个 Channel 的统计信息**。ChannelHandler 需要添加 @Sharable 注解并且是线程安全的，否则被添加到多个 ChannelPipeline 时会触发异常
 
 
 
@@ -393,12 +423,54 @@ ChannelHandlerContext 中有一些存在于 Channel 和 ChannelPipeline 中的�
 
   异常抛出后，将从触发的位置开始流经 ChannelPipeline // TODO 是不是整条链
 
-  到 pipelines 尾端后如果没被处理，会被标记
+  可以通过重写 exceptionCaught 处理产生的异常，默认实现是将异常转发给 pipeline 中的下一个 handler；到 pipelines 尾端后如果还没被处理，会被标记( 通过日志记录 )
 
 - 出站异常
 
   1. 每个出站操作都返回一个 ChannelFuture，注册到其中的 ChannelFutureListener 将在操作完成时被通知操作是否成功
-  2. ChannelOutboundHandler 方法中通过 ChannelPromise 参数注册监听器
+  
+  2. ChannelOutboundHandler 中的方法方法会传入 ChannelPromise ； 
+  
+     
+  
+  - 可以通过 write 方法返回的 ChannelFuture#addListener 注册监听器
+  
+    ```java
+    // 可以用来处理较为细致的异常
+    ChannelFuture future = channel.write(msg);
+    future.addListener(new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            if (future.isSuccess()) {
+                System.out.println("write success");
+            } else {
+                System.out.println("write failed");
+                future.cause().printStackTrace();
+            }
+        }
+    });
+    ```
+  
+  - 将 listener 加入到 promise 中
+  
+    ```java
+    // 可以用来处理一般的异常
+    public class OutboundExceptionHandler extends ChannelOutboundHandlerAdapter {
+    
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            promise.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (!future.isSuccess()) {
+                        future.cause().printStackTrace();
+                        future.channel().close();
+                    }
+                }
+            });
+        }
+    }
+    ```
 
 
 
@@ -415,6 +487,8 @@ ChannelHandlerContext 中有一些存在于 Channel 和 ChannelPipeline 中的�
 ##### 7.2 EventLoop 接口
 
 定义 Netty 的核心抽象，处理连接的生命周期中发生的事件
+
+同一个线程中处理某个给定的 EventLoop 中所产生的所有事件，提供了一个更加简单的执行体系架构，并且消除了在多个 ChannelHandler 中进行同步的需要( 除了任何可能需要在多个 Channel 中共享的 )。
 
 一个给定 Channel 的所有 IO 操作全部都由一个 Thread 执行
 
