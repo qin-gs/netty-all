@@ -21,6 +21,7 @@ class FixedLengthFrameDecoderTest {
         EmbeddedChannel channel = new EmbeddedChannel(new FixedLengthFrameDecoder(3));
 
         // 写入数据
+        // 引用计数 +1
         assertTrue(channel.writeInbound(input.retain()));
         // 标记为完成
         assertTrue(channel.finish());

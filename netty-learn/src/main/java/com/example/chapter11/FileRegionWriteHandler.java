@@ -19,6 +19,7 @@ public class FileRegionWriteHandler extends ChannelInboundHandlerAdapter {
         Channel channel = CHANNEL_FROM_SOMEWHERE;
 
         FileInputStream in = new FileInputStream(file);
+        // 利用 nio 零拷贝的特性传输文件
         DefaultFileRegion region = new DefaultFileRegion(in.getChannel(), 0, file.length());
         channel.writeAndFlush(region).addListener(new ChannelFutureListener() {
             @Override

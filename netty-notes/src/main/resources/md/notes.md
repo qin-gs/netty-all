@@ -544,6 +544,8 @@ Netty 线程的高性能，取决于对当前执行的 Thread 的身份的确定
 
 ##### 8.1 BootStrap 类
 
+服务器致力于使用一个父Channel来接受来自客户端的连接，并创建子Channel以用于它们之间的通信;而客户端将最可能只需要一个单独的、没有父Channel的Channel来用于所有的网络交互
+
 ![引导类的层次结构](../img/引导类的层次结构.png)
 
 ##### 8.2 引导客户端 和 无连接协议
@@ -562,9 +564,9 @@ BootStrap 负责为客户端 和 使用无连接协议的应用程序创建 Chan
 
 
 
-##### 8.5 引导过程中添加多个 ChannelHandler
+##### 8.5 引导过程中添加多个 ChannelHandler // TODO
 
-扩展 ChannelInitializer<Channel> 类，重写 initChannel 方法
+如果引导过程中只能加一个 ChannelHandler，可以扩展 ChannelInitializer<Channel> 类，重写 initChannel 方法一次添加多个 channel
 
 
 
@@ -576,14 +578,14 @@ BootStrap 负责为客户端 和 使用无连接协议的应用程序创建 Chan
 
 ##### 8.7 引导 DatagramChannel
 
-Bootstrap 可以用于无连接的协议 DatagramChannel
+Bootstrap 可以用于**无连接**的协议 DatagramChannel，只能调用 bind 方法建立连接 (不能调用 connect)
 
 
 
 ##### 8.8 关闭
 
 ```java
-group.shutdownGracefully()
+Future<?> future = group.shutdownGracefully()
 ```
 
 
@@ -607,22 +609,43 @@ EmbeddedChannel
 
 ##### 10.2 解码器
 
-- 字节  -->   消息                 (ByteToMessageDecoder, ReplayingDecoder)
-- 消息  -->  另一种消息      (MessageToMessageDecoder)
+解码器通常需要在 Channel 关闭之后产生最后-一个消息(因此就有了decodeLast() 方法)
+
+- 字节  -->   消息
+
+  - ByteToMessageDecoder
+
+  - ReplayingDecoder
+  - LineBasedFrameDecoder 换行符分隔
+  - HttpObjectDecoder http 数据伽玛琪
+
+- 消息  -->  另一种消息
+
+  - MessageToMessageDecoder
+
+TooLongFrameException 避免解码器缓冲大量数据
 
 
 
 ##### 10.3 编码器
 
-- 消息   -->   字节   (MessageToByteEncoder)
-- 消息   -->   消息
+- 消息  -->  字节
+  - MessageToByteEncoder
+- 消息  -->  消息
+  - MessageToMessageDecoder
 
 
 
 ##### 10.4 抽象的编解码器
 
+同时实现了编码器 和 解码器
+
 - ByteToMessageCodec
+
 - MessageToMessageCodec
+
+  上面两个需要在一个类中处理 编码/解码 问题会对重用性造成影响，下面的 handler 通过传入独立的 编码/解码 器进行重用
+
 - CombinedChannelDuplexHandler
 
 
@@ -666,9 +689,17 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 
 通过重写 `io.netty.channel.ChannelInboundHandlerAdapter#userEventTriggered` 方法，处理 IdleStateEvent 事件
 
-- IdleStateHandler：如果指定时间内没有发送 或 接收 任何数据，该 Handler 会触发 IdleStateEvent 事件
+- IdleStateHandler
+
+  如果指定时间内没有发送 或 接收 任何数据，该 Handler 会触发 IdleStateEvent 事件，可以通过 userEventTriggered 方法处理该事件
+
 - ReadTimeoutHandler
+
+  如果在指定的时间间隔内没有收到任何的入站数据，则抛出一个ReadTimeoutException并关闭对应的Channel，可以通过重写 ChannelHandler中的 exceptionCaught() 方法来检测该ReadTimeoutException
+
 - WriteTimeoutHandler
+
+  同上...
 
 
 
@@ -688,10 +719,12 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 
 
 
-##### 11.5 写大型数据
+##### 11.5 写大型数据 // TODO
+
+nio 的零拷贝，消除了将文件内容从文件系统移动到网络栈的复制过程
 
 - DefaultFileRegion：          使用 零拷贝 特性完成文件传输
-- ChunkedWriteHandler： 指出异步写大型数据量，不会导致大量内存消耗
+- ChunkedWriteHandler： 支持异步写大型数据量，不会导致大量内存消耗，将数据从文件系统复制到用户内容中
 - ChunkedInput
 
 
