@@ -70,6 +70,9 @@ public interface Serializer {
         }
     }
 
+    /**
+     * 将 class 对象转换成 json
+     */
     class ClassCodec implements JsonSerializer<Class<?>>, JsonDeserializer<Class<?>> {
 
         @Override

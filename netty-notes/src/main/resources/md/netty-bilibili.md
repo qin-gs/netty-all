@@ -287,3 +287,33 @@ ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享�
    int somaxconn = PlatformDependent.isWindows() ? 200 : 128;
    ```
 
+
+
+3. ulimit -n
+
+   操作系统参数，一个进程允许打开的文件描述符的数量
+
+4. tcp_nodelay
+
+   控制是否开启Nagle算法
+
+5. so_sendbuf  和  so_recvbuf
+
+   TCP 发送/接受 缓冲区的 容量上限
+
+6. allocator
+
+   分配 Bytebuf
+
+   ctx.alloc()  -> 默认 PooledUnsafeDirectBytebuf 256；可以通过虚拟机参数进行修改
+
+   - -Dio.netty.allocator.type=unpooled 不使用池化
+   - -Dio.netty.noPreferDirect=true 使用堆内存(不使用直接内存)
+
+7. rcvbuf_allocator
+
+   控制 netty 接收缓冲区(第一个 handler 的ByteBuf 大小类型)大小，可以动态调整，统一使用直接内存，池化由参数控制
+
+   
+
+   ByteBufAllocator 决定是否池化 (可以通过参数修改)；通过 RecvByteBufAllocator.handler#allocate 创建 (是 direct 直接内存)
