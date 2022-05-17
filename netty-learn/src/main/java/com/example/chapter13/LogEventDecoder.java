@@ -8,6 +8,9 @@ import io.netty.handler.codec.MessageToMessageDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+/**
+ * 将 DatagramPacket 解码成 LogEvent
+ */
 public class LogEventDecoder extends MessageToMessageDecoder<DatagramPacket> {
     @Override
     protected void decode(ChannelHandlerContext ctx, DatagramPacket msg, List<Object> out) throws Exception {

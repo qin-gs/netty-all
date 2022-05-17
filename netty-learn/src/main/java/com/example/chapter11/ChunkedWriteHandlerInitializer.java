@@ -9,6 +9,9 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import java.io.File;
 import java.io.FileInputStream;
 
+/**
+ * 使用 ChunkedStream 传输文件内容
+ */
 public class ChunkedWriteHandlerInitializer extends ChannelInitializer<Channel> {
 
     private final File file;

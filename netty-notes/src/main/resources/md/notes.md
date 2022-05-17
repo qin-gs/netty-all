@@ -560,11 +560,13 @@ BootStrap 负责为客户端 和 使用无连接协议的应用程序创建 Chan
 
 ##### 8.4 从 Channel 引导客户端
 
+
+
 ![两个Channel之间共享EventLoop](../img/两个Channel之间共享EventLoop.png)
 
 
 
-##### 8.5 引导过程中添加多个 ChannelHandler // TODO
+##### 8.5 引导过程中添加多个 ChannelHandler
 
 如果引导过程中只能加一个 ChannelHandler，可以扩展 ChannelInitializer<Channel> 类，重写 initChannel 方法一次添加多个 channel
 
@@ -609,7 +611,7 @@ EmbeddedChannel
 
 ##### 10.2 解码器
 
-解码器通常需要在 Channel 关闭之后产生最后-一个消息(因此就有了decodeLast() 方法)
+解码器通常需要在 Channel 关闭之后产生最后一个消息(因此就有了decodeLast() 方法)
 
 - 字节  -->   消息
 
@@ -723,9 +725,33 @@ ch.pipeline().addFirst("ssl", new SslHandler(sslEngine, startTls));
 
 nio 的零拷贝，消除了将文件内容从文件系统移动到网络栈的复制过程
 
-- DefaultFileRegion：          使用 零拷贝 特性完成文件传输
-- ChunkedWriteHandler： 支持异步写大型数据量，不会导致大量内存消耗，将数据从文件系统复制到用户内容中
-- ChunkedInput
+```java
+// 只适用于文件内容的直接传输，不包括应用程序对数据的任何处理
+// 需要将数据从文件系统复制到用户内存时，可以使用 ChunkedWriteHandler，支持异步写大型数据流，不会导致大量内存消耗
+FileInputStream in = new FileInputStream(file);
+// 利用 nio 零拷贝的特性传输文件
+DefaultFileRegion region = new DefaultFileRegion(in.getChannel(), 0, file.length());
+channel.writeAndFlush(region).addListener(new ChannelFutureListener() {
+    @Override
+    public void operationComplete(ChannelFuture future) throws Exception {
+        if (!future.isSuccess()) {
+            Throwable cause = future.cause();
+            cause.printStackTrace();
+        }
+    }
+});
+```
+
+
+
+![ChunkedInput继承关系](../img/ChunkedInput继承关系.png)
+
+| 名称             | 描述                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| ChunkedFile      | 从文件中逐块获取数据，当平台不支持零拷贝或需要转换数据时使用 |
+| ChunkedNioFile   | 与 ChunkedFile 类似，使用了 FileChannel                      |
+| ChunkedStream    | 从 InputStream 中逐块传输内容                                |
+| ChunkedNioStream | 从 ReadableByteChannel 中逐块传输内容                        |
 
 
 
@@ -741,16 +767,29 @@ nio 的零拷贝，消除了将文件内容从文件系统移动到网络栈的�
 
 #### 12. WebSocket
 
+
+
+实时Web利用技术和实践，使用户在信息的作者发布信息之后就能够立即收到信息，而不需要他们或者他们的软件周期性地检查信息源以获取更新。
+
+
+
 http/s  -->  WebSocket：升级握手
 
 处理 WebSocket 帧
 
 - BinaryWebSocketFrame
+
 - **TextWebSocketFrame**：包含真正需要处理的文本数据
+
 - ContinuationWebSocketFrame
+
 - CloseWebSocketFrame
+
 - PingWebSocketFrame
+
 - PongWebSocketFrame
+
+  其它类型的帧使用 WebSocketServerProtocolHandler 处理
 
 
 
@@ -760,10 +799,24 @@ http/s  -->  WebSocket：升级握手
 
 ##### 广播者
 
+**接收方**
+
+需要在指定端口上启动一个监听程序，创建与一个事件监视器接收消息
+
 
 
 ##### 监视器
 
+![广播系统概览](../img/广播系统概览.png)
 
 
-构建一个示例应用程序，其将日志条目转换为 UDP 数据报并广播它们，随后这些被广播出去的消息将被订阅的监视器客户端所捕获。我们的实现使用了一个 POJO 来表示日志数据，并通过一个自定义的编码器来将这个消息格式转换为 Netty 的 DatagramPacket
+
+构建一个示例应用程序，其将日志条目转换为 UDP 数据报并广播它们，随后这些被广播出去的消息将被订阅的监视器客户端所捕获。
+
+使用了一个 POJO (LogEvent)来表示日志数据，并通过一个自定义的编码器来将这个消息格式转换为 Netty 的 DatagramPacket 发送到远程节点
+
+
+
+
+
+![事件流](../img/事件流.png)

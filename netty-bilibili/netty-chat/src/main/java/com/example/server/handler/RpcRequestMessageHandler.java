@@ -17,6 +17,7 @@ public class RpcRequestMessageHandler extends SimpleChannelInboundHandler<RpcReq
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcRequestMessage msg) throws Exception {
+        // 服务器将客户端发送的消息解码之后，去注册中心找到对象调用方法，处理返回值
         RpcResponseMessage response = new RpcResponseMessage();
         response.setSequenceId(msg.getSequenceId());
         try {

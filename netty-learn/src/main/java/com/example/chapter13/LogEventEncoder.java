@@ -9,6 +9,9 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+/**
+ * 将 LogEvent 对象编码成 DatagramPacket
+ */
 public class LogEventEncoder extends MessageToMessageEncoder<LogEvent> {
 
     private final InetSocketAddress remoteAddress;

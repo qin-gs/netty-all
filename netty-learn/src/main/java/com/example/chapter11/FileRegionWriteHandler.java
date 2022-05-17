@@ -7,7 +7,8 @@ import java.io.File;
 import java.io.FileInputStream;
 
 /**
- * 传输文件内容
+ * 传输文件内容，使用 nio 零拷贝的特性；
+ * 只适用于文件内容的直接传输，不包括应用程序对数据的任何处理
  */
 public class FileRegionWriteHandler extends ChannelInboundHandlerAdapter {
     private static final Channel CHANNEL_FROM_SOMEWHERE = new NioSocketChannel();

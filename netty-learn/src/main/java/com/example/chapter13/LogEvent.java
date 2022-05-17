@@ -57,4 +57,14 @@ public class LogEvent {
     public long getReceivedTimestamp() {
         return received;
     }
+
+    @Override
+    public String toString() {
+        return "LogEvent{" +
+                "source=" + source +
+                ", logfile='" + logfile + '\'' +
+                ", msg='" + msg + '\'' +
+                ", received=" + received +
+                '}';
+    }
 }

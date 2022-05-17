@@ -39,6 +39,8 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
         // 如果请求了 WebSocket 协议升级，增加引用次数，传递给下一个 Handler
         if (wsUri.equalsIgnoreCase(request.getUri())) {
+            // 之所以需要调用retain()方法,是因为调用channelRead()方法完成之后，
+            // 它将调用FullHttpRequest对象上的release()方法以释放它的资源
             ctx.fireChannelRead(request.retain());
         } else {
             // 处理 100 响应码
@@ -48,6 +50,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             }
             // 读取 index.html
             RandomAccessFile file = new RandomAccessFile(INDEX, "r");
+            // 创建一个响应对象
             DefaultHttpResponse response = new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html; charset=UTF-8");
             boolean keepAlive = HttpUtil.isKeepAlive(request);
@@ -56,9 +59,12 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 response.headers().set(HttpHeaderNames.CONTENT_LENGTH, file.length());
                 response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
             }
+            // 将 response 写到客户端
             ctx.write(response);
             // 检查是否有 SslHandler，没有的话使用 ChunkedNioFile
             if (ctx.pipeline().get(SslHandler.class) == null) {
+                // 将 index.html 写到客户端
+                // 使用 DefaultFileRegion 零拷贝特性
                 ctx.write(new DefaultFileRegion(file.getChannel(), 0, file.length()));
             } else {
                 ctx.write(new ChunkedNioFile(file.getChannel()));
