@@ -303,7 +303,7 @@ ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享�
 
 6. allocator
 
-   分配 Bytebuf
+   分配 ByteBuf
 
    ctx.alloc()  -> 默认 PooledUnsafeDirectBytebuf 256；可以通过虚拟机参数进行修改
 
@@ -317,3 +317,63 @@ ChannelHandler 如果没有中间状态，可以在 EventLoopGroup 之间共享�
    
 
    ByteBufAllocator 决定是否池化 (可以通过参数修改)；通过 RecvByteBufAllocator.handler#allocate 创建 (是 direct 直接内存)
+
+
+### RPC 调用
+
+
+
+### 源码分析
+
+```java
+// 原生 nio 操作
+//1 netty 中使用 NioEventLoopGroup （简称 nio boss 线程）来封装线程和 selector (选择器)
+Selector selector = Selector.open();
+  
+//2 创建 NioServerSocketChannel，同时会初始化它关联的 handler，以及为原生 ssc 存储 config
+io.netty.channel.socket.nio.NioServerSocketChannel attachment = new NioserverSocketChannel();
+
+//3 创建 NioServerSocketchannel 时，创建了 java 原生的 Server Socketchannel
+java.nio.channels.ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+
+public static ServerSocketChannel open() throws IOException {
+    return SelectorProvider.provider().openServerSocketChannel();
+}
+
+// 设置为非阻塞模式
+serverSocketChannel.configureBlocking(false);
+  
+//4 启动 nio boss 线程执行接下来的操作
+//5 注册（仅关联 Selector 和 NioServerSocketChannel)，未关注事件
+SelectionKey selectionKey = serverSocketChannel.register(selector, 0, attachment);
+  
+//6 head ->初始化器 -> ServerBootstrapAcceptor -＞ tail，初始化器是一次性的，只为添加 acceptor
+//7 绑定端口
+serverSocketchannel.bind(new InetSocketAddress(8080));
+  
+//8 触发 channel active 事件，在 head 中关注 op_accept 事件
+selectionkey.interestOps(Selectionkey.OP_ACCEPT);
+```
+
+```java
+// io.netty.bootstrap.AbstractBootstrap#bind(int)
+
+// io.netty.bootstrap.AbstractBootstrap#initAndRegister
+init (main)
+  创建 io.netty.channel.socket.nio.NioServerSocketChannel (和上面类似 provider.openServerSocketChannel())
+  添加 NioServerSocketChannel 初始化handler (添加一个 ChannelInitializer，注册之后才会调用它的 initChannel 方法)
+  初始化 handler 等待调用  (nio-thread)
+  向 nio ssc 添加 ServerBootstrapAcceptor(accept 事件发生后建立连接)
+
+register (切换线程，让执行权从主线程 切换到 nio线程)
+  启动 nio master 线程 (main)
+  原生 ssc 注册到 selector 还没有关注事件 (和上面类似 serverSocketChannel.register(selector, 0, attachment)) (nio-thread)
+  执行 NioServerSocketChannel 调用 ChannelInitializer#initChannel 方法 (nio-thread)
+
+regFuture 回调 doBind0 (nio-thread)
+  原生 ServerSocketChannel 绑定 (serverSocketchannel.bind(new InetSocketAddress(8080));) (nio-thread)
+  触发 NioServerSocketChannel active 事件 (selectionkey.interestOps(Selectionkey.OP_ACCEPT) (在 io.netty.channel.nio.AbstractNioChannel#doBeginRead 中)) (nio-thread)
+
+
+```
+
