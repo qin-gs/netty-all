@@ -16,6 +16,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 用 selector 处理线程一直运行的问题
+ */
 public class ServerTest {
 
     private static final Logger log = LoggerFactory.getLogger(ServerTest.class);
@@ -27,8 +30,12 @@ public class ServerTest {
         ssc.configureBlocking(false);
         ssc.bind(new InetSocketAddress(8080));
 
+        // 来管理多个 channel
         Selector master = Selector.open();
+        // 建立 selector 和 channel 的联系
+        // 事件发送后，通过 SelectionKey 得到具体的事件 和 来自哪个channel
         SelectionKey masterKey = ssc.register(master, 0, null);
+        // 关注 accept 事件 (在有连接请求时触发)
         masterKey.interestOps(SelectionKey.OP_ACCEPT);
 
         Worker[] workers = new Worker[2];
@@ -36,11 +43,15 @@ public class ServerTest {
         AtomicInteger index = new AtomicInteger(0);
 
         while (true) {
+            // 没有事件发生时会阻塞
+            // 有未处理事件时也不会阻塞
             master.select();
+            // 处理事件，获取所有发生的事件
             Iterator<SelectionKey> iterator = master.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
                 iterator.remove();
+                // 判断事件类型，如果是 accept事件
                 if (key.isAcceptable()) {
                     SocketChannel sc = ssc.accept();
                     sc.configureBlocking(false);

@@ -1,6 +1,5 @@
 package com.example.nio;
 
-import com.example.util.ByteBufferUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +43,11 @@ public class SelectorTest {
             // 没有事件则阻塞，有事件才会恢复运行
             // 如果有事件未处理，不会阻塞；cancel 之后会恢复阻塞
             selector.select();
-            // 处理事件，获取所有可用事件
+            // 处理事件，获取所有可用事件；只会往里面添加，处理完之后需要自己手动移除
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
-                // 处理的 key 需要手动移除掉
+                // 处理的 key 需要手动移除掉，否则下次还会处理同一个事件
                 iterator.remove();
                 log.debug(key.toString());
 

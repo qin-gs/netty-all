@@ -377,3 +377,57 @@ regFuture 回调 doBind0 (nio-thread)
 
 ```
 
+
+
+### NioEventLoop
+
+包含一个 selector，一个线程池包含一个线程，一个队列存放待执行的任务，一个执行定时任务的队列
+
+处理 io 事件，普通任务，定时任务
+
+
+
+selector 有两个，在构造函数中创建；为了在遍历 selectKey 时提高性能
+
+nio 线程在首次调用 execute 方法时启动，只启动一次
+
+提交普通任务后会唤醒 selector，停止阻塞
+
+```java
+EventLoop next = new NioEventLoopGroup().next();
+next.execute(new Runnable() {
+    @Override
+    public void run() {
+        System.out.println("hi");
+    }
+});
+```
+
+```java
+// 只有其他线程提交任务时才会调用 selector 的 wakeup 方法
+// 如果有多个线程同时提交任务，wakenUp 变量可以避免重复唤醒
+@Override
+protected void wakeup(boolean inEventLoop) {
+    if (!inEventLoop && wakenUp.compareAndSet(false, true)) {
+        selector.wakeup();
+    }
+}
+```
+
+
+
+没有任务是，会进入 io.netty.channel.nio.NioEventLoop#run  SelectStrategy.SELECT 分支
+
+
+
+select 阻塞，阻塞时间 (有没有定时任务)
+
+
+
+nio 空轮训bug
+
+
+
+ioRatio：控制 io 事件所占时间比例
+
+ioTime：执行 io 事件消耗的时间
